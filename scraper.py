@@ -1,5 +1,6 @@
 '''
-Data, liberate yo-self! Extract intraday values from the data used to populate fitbit's online panels.
+Data, liberate yo-self! Extract intraday values from the data used to
+populate fitbit's online panels.
 
 Requires BeautifulSoup and Selenium.
 '''
@@ -11,16 +12,14 @@ __version__ = '0.1'
 
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from datetime import datetime, timedelta
-import sys
 import re
 import numpy as np
 
 def fitbitLogin(email, password):
     '''
     Find the login form, fill the fields, and authenticate.
-    
+
     Returns the authenticated driver.
     '''
     
@@ -50,9 +49,9 @@ def pullIntradayData(browser, day, month, year=2014, activity='Steps'):
 
     url = 'http://www.fitbit.com/activities/%d/%02d/%02d#intraday%sChar' % (year, month, day, activity)
     browser.get(url)
-    s = browser.page_source
+    html = browser.page_source
     
-    return s
+    return html
 
 def scrapeIntradayData(html):
     '''
@@ -69,7 +68,7 @@ def scrapeIntradayData(html):
     if len(soup.contents) > 1:
         print 'This should not have happened!'
         print soup
-        assert(len(soup.contents) == 1)   
+        assert len(soup.contents) == 1
     soup = soup.contents[0]
 
     data_points = soup.findAll(strain_data_point)
@@ -96,11 +95,11 @@ def scrapeSleepData(xml):
     strain_data_points = SoupStrainer(name='value')
     
     soup = BeautifulSoup(xml, parseOnlyThese=strain_sleep_data)
-    assert(len(soup.contents) == 1)
+    assert len(soup.contents) == 1
     soup = soup.contents[0]
     
     data_points = soup.findAll(strain_data_graph)
-    assert(len(data_points) == 1)
+    assert len(data_points) == 1
     data_points = data_points[0].findAll(strain_data_points)
 
     mapper = {'asleep'   : 0,
@@ -108,11 +107,11 @@ def scrapeSleepData(xml):
               'awake'    : 2,
               }
     output = []
-    for d in data_points:
-        print d
-        val = d.get('description').split(' ')
+    for data in data_points:
+        print data
+        val = data.get('description').split(' ')
         output.append((mapper[val[0]], val[2]))
-    #data_points = np.array([(mapper[i.get('description').split(' ')[0]], int(i.get('xid'))) for i in data_points])
+
     return output
 
 def writeSeries(data, source, day, month, year=2014, out_dir='data'):
@@ -124,13 +123,13 @@ def writeSeries(data, source, day, month, year=2014, out_dir='data'):
     TODO -- Hook to dump to a DB.
     '''
     
-    origin = datetime(year,month,day)
+    origin = datetime(year, month, day)
     steps = timedelta(seconds=int(60*5))
 
     date = [origin + (i*steps) for i in xrange(len(data))]
     
     ofile = open('%s/%s %d-%02d-%02d.csv' % (out_dir, source, year, month, day), 'w')
-    for d in zip(date, data[:,1]):
+    for d in zip(date, data[:, 1]):
         ofile.write('%s,%d\n' % d)
 
 def checkLastDL(source, out_dir='data'):
@@ -143,7 +142,7 @@ def checkLastDL(source, out_dir='data'):
     dates = [fname.split(' ')[1].split('.')[0] for fname in os.listdir(out_dir) if source in fname]
     try:
         year, month, day = [int(d) for d in dates[-1].split('-')]
-    except:
+    except IndexError:
         print 'Could not find previous data, please enter the record start date.'
         print 'year:',
         year = int(raw_input())
@@ -156,7 +155,7 @@ def checkLastDL(source, out_dir='data'):
     
 def getDateRange(start_year, start_month, start_day,
                  end_year, end_month, end_day,
-                 source, out_dir = 'data'):
+                 source, browser, out_dir='data'):
     '''
     Utility function to srape the data over a given range of dates.
     '''
@@ -173,26 +172,23 @@ def getDateRange(start_year, start_month, start_day,
         data_points, source = scrapeIntradayData(html)
         if len(data_points) > 0:
             writeSeries(data_points, source, cur.day, cur.month, cur.year, out_dir)
-        sleep (5*random())
+        sleep(5*random())
         cur += step
 
 def getLatestData(start_year, start_month, start_day,
-                  source, out_dir = 'data'):
+                  source, browser, out_dir='data'):
     '''
     Utility wrapper funciton to get data from a given date to the current date.
     '''
 
-    from datetime import datetime
-    
     now = datetime.now()
     
     getDateRange(start_year, start_month, start_day,
                  now.year, now.month, now.day,
-                 source, out_dir)
+                 source, browser, out_dir)
 
-if __name__ == '__main__':
-    import sys
-    source = 'Steps' if len(sys.argv) < 2 else sys.argv[1]
+def main(args):
+    source = 'Steps' if len(args) < 1 else args[0]
 
     import getpass
     print 'Login email: ',
@@ -202,5 +198,8 @@ if __name__ == '__main__':
     year, month, day = checkLastDL(source)
 
     browser = fitbitLogin(email, passwd)
-    getLatestData(year, month, day, source)
+    getLatestData(year, month, day, source, browser)
 
+if __name__ == '__main__':
+    import sys
+    main(sys.argv[1:])
