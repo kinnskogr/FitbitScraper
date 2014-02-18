@@ -5,10 +5,12 @@ populate fitbit's online panels.
 Requires BeautifulSoup and Selenium.
 '''
 
+
 __author__  = 'Emanuel Strauss'
 __email__   = 'emanuel.strauss@gmail.com'
 __license__ = 'GPL'
 __version__ = '0.1'
+
 
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 from selenium import webdriver
