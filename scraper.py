@@ -168,6 +168,7 @@ def getDateRange(start_year, start_month, start_day,
     step = timedelta(1)
     while cur <= end:
         print cur.day, cur.month, cur.year
+        ## TODO pull sleep data when appropriate
         html = pullIntradayData(browser, cur.day, cur.month, cur.year)
         data_points, source = scrapeIntradayData(html)
         if len(data_points) > 0:
