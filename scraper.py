@@ -203,7 +203,4 @@ if __name__ == '__main__':
 
     browser = fitbitLogin(email, passwd)
     getLatestData(year, month, day, source)
-#    html = open(sys.argv[1]).read()
-#    data_points, source = scrapeIntradayData(html)
-#    ax = plotSeries(data_points, source)
 
