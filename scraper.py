@@ -1,7 +1,7 @@
 '''
 Data, liberate yo-self! Extract intraday values from the data used to populate fitbit's online panels.
 
-Requires BeautifulSoup and Selenium
+Requires BeautifulSoup and Selenium.
 '''
 
 __author__  = 'Emanuel Strauss'
@@ -66,7 +66,10 @@ def scrapeIntradayData(html):
     
     soup = BeautifulSoup(html, parseOnlyThese=strain_intraday_data)
     # I think there should only ever be one chart selected
-    assert(len(soup.contents) == 1)
+    if len(soup.contents) > 1:
+        print 'This should not have happened!'
+        print soup
+        assert(len(soup.contents) == 1)   
     soup = soup.contents[0]
 
     data_points = soup.findAll(strain_data_point)
@@ -129,11 +132,78 @@ def writeSeries(data, source, day, month, year=2014, out_dir='data'):
     ofile = open('%s/%s %d-%02d-%02d.csv' % (out_dir, source, year, month, day), 'w')
     for d in zip(date, data[:,1]):
         ofile.write('%s,%d\n' % d)
+
+def checkLastDL(source, out_dir='data'):
+    '''
+    Check the date of the last download matching the data source name.
+    '''
     
+    import os
+    
+    dates = [fname.split(' ')[1].split('.')[0] for fname in os.listdir(out_dir) if source in fname]
+    try:
+        year, month, day = [int(d) for d in dates[-1].split('-')]
+    except:
+        print 'Could not find previous data, please enter the record start date.'
+        print 'year:',
+        year = int(raw_input())
+        print 'month:',
+        month = int(raw_input())
+        print 'day:',
+        day = int(raw_input())
+    
+    return year, month, day
+    
+def getDateRange(start_year, start_month, start_day,
+                 end_year, end_month, end_day,
+                 source, out_dir = 'data'):
+    '''
+    Utility function to srape the data over a given range of dates.
+    '''
+
+    from time import sleep
+    from random import random
+
+    cur  = datetime(start_year, start_month, start_day)
+    end  = datetime(end_year, end_month, end_day)
+    step = timedelta(1)
+    while cur <= end:
+        print cur.day, cur.month, cur.year
+        html = pullIntradayData(browser, cur.day, cur.month, cur.year)
+        data_points, source = scrapeIntradayData(html)
+        if len(data_points) > 0:
+            writeSeries(data_points, source, cur.day, cur.month, cur.year, out_dir)
+        sleep (5*random())
+        cur += step
+
+def getLatestData(start_year, start_month, start_day,
+                  source, out_dir = 'data'):
+    '''
+    Utility wrapper funciton to get data from a given date to the current date.
+    '''
+
+    from datetime import datetime
+    
+    now = datetime.now()
+    
+    getDateRange(start_year, start_month, start_day,
+                 now.year, now.month, now.day,
+                 source, out_dir)
+
 if __name__ == '__main__':
-    html = open(sys.argv[1]).read()
-    data_points, source = scrapeIntradayData(html)
-    ax = plotSeries(data_points, source)
-    #data_points = scrapeSleepData(html)
-    #source = 'sleepData'
-    
+    import sys
+    source = 'Steps' if len(sys.argv) < 2 else sys.argv[1]
+
+    import getpass
+    print 'Login email: ',
+    email = raw_input()
+    passwd = getpass.getpass()
+
+    year, month, day = checkLastDL(source)
+
+    browser = fitbitLogin(email, passwd)
+    getLatestData(year, month, day, source)
+#    html = open(sys.argv[1]).read()
+#    data_points, source = scrapeIntradayData(html)
+#    ax = plotSeries(data_points, source)
+
