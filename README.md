@@ -5,6 +5,7 @@ Data, liberate yo-self! Extract intraday values from the data used to populate f
 
 ## Usage:
 * Initial setup:
+
   mkdir data
 
 * Download the latest data:
